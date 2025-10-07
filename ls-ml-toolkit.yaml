@@ -1,0 +1,97 @@
+# Label Studio ML Toolkit Configuration
+# This file contains project-specific settings for ls-ml-toolkit
+
+# Project Information
+project:
+  name: "ls-ml-toolkit"
+  version: "1.0.0"
+  author: "Babichev Maxim"
+  email: "info@babichev.net"
+
+# Dataset Configuration
+dataset:
+  # Base dataset directory (can be overridden with --dataset-dir flag)
+  base_dir: "dataset"
+  
+  # Train/validation split ratios
+  train_split: 0.8
+  val_split: 0.2
+  
+  # Dataset structure
+  structure:
+    train_images: "train/images"
+    train_labels: "train/labels"
+    val_images: "val/images"
+    val_labels: "val/labels"
+    classes_file: "classes.txt"
+    data_yaml: "data.yaml"
+
+# Training Configuration
+training:
+  # Model settings
+  model: "yolo11n.pt"
+  epochs: 50
+  batch_size: 8
+  image_size: 640
+  device: "auto"  # auto, cpu, mps, 0, 1, etc.
+  
+  # Training directories
+  project_dir: "runs/detect"
+  name: "train"
+  
+  # Output settings
+  save_period: 10
+  patience: 50
+  workers: 8
+
+# Model Export Configuration
+export:
+  # Output model path (can be overridden with --output-model flag)
+  model_path: "shared/models/layout_yolo_universal.onnx"
+  
+  # ONNX export settings
+  format: "onnx"
+  imgsz: 640
+  opset: 11
+  simplify: true
+  
+  # Optimization settings
+  optimize: true
+  optimization_level: "all"  # basic, extended, all
+
+# AWS S3 Configuration
+aws:
+  access_key_id: "${LS_ML_AWS_ACCESS_KEY_ID}"  # From .env file
+  secret_access_key: "${LS_ML_AWS_SECRET_ACCESS_KEY}"  # From .env file
+  region: "us-east-1"  # Default AWS region
+  endpoint: ""  # Custom S3 endpoint (optional)
+
+# Logging Configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s - %(levelname)s - %(message)s"
+  file: null  # Set to file path for file logging
+
+# Development and Debugging
+development:
+  debug: false  # Enable debug mode for verbose output
+  test_mode: false  # Test mode (skips actual training)
+  log_level: "INFO"  # Override logging level
+
+# Platform-specific settings
+platform:
+  # Auto-detect GPU support
+  auto_detect_gpu: true
+  
+  # Force specific device (auto, cpu, mps, 0, 1, etc.)
+  force_device: null
+  
+  # Platform-specific overrides
+  macos:
+    device: "mps"
+    batch_size: 16
+    
+  linux:
+    device: "auto"  # PyTorch will auto-detect GPU
+    batch_size: 16
+

@@ -1,0 +1,32 @@
+# Python dependencies for YOLO training script
+# Install with: pip install -r requirements.txt
+
+# Core ML dependencies
+ultralytics>=8.0.0
+onnx>=1.15.0
+onnxruntime>=1.16.0
+
+# Data processing and utilities
+tqdm>=4.65.0
+requests>=2.31.0
+PyYAML>=6.0.0
+
+# AWS S3 support
+boto3>=1.34.0
+botocore>=1.34.0
+
+# PyTorch with platform-specific support
+# PyTorch will install the correct version for your platform:
+# - macOS: MPS support (CPU + Metal Performance Shaders)
+# - Linux: CUDA support (if NVIDIA GPU available)
+# - Windows: CUDA support (if NVIDIA GPU available)
+# - All platforms: CPU fallback if no GPU available
+
+# CPU-only version (works on all platforms)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Note: For optimal GPU performance, users should install PyTorch manually:
+# macOS: pip install torch torchvision (includes MPS)
+# Linux CUDA: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+# Linux ROCm: pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm5.6

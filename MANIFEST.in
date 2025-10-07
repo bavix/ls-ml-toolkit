@@ -1,0 +1,16 @@
+include README.md
+include requirements*.txt
+include env.example
+include *.yml
+include *.yaml
+recursive-include * *.md
+recursive-include * *.txt
+recursive-include * *.yml
+recursive-include * *.yaml
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.so
+recursive-exclude * .DS_Store
+recursive-exclude * .git*
+recursive-exclude * tests*
+recursive-exclude * docs*

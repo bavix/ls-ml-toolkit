@@ -1,0 +1,91 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ls-ml-toolkit"
+version = "1.0.0"
+description = "Label Studio ML Toolkit: Convert, Train, Optimize object detection models (CPU only)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Babichev Maxim", email = "info@babichev.net"},
+]
+maintainers = [
+    {name = "Babichev Maxim", email = "info@babichev.net"},
+]
+keywords = [
+    "label-studio",
+    "yolo", 
+    "object-detection",
+    "machine-learning",
+    "computer-vision",
+    "ml-toolkit",
+    "dataset-conversion",
+    "model-training",
+    "onnx-optimization",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "ultralytics>=8.0.0",
+    "onnx>=1.15.0",
+    "onnxruntime>=1.16.0",
+    "tqdm>=4.65.0",
+    "requests>=2.31.0",
+    "PyYAML>=6.0.0",
+    "boto3>=1.34.0",
+    "botocore>=1.34.0",
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+]
+
+# No platform-specific extras needed - PyTorch auto-detects GPU support
+
+[project.scripts]
+lsml-train = "ls_ml_toolkit.train:main"
+lsml-optimize = "ls_ml_toolkit.optimize_onnx:main"
+
+[project.urls]
+Homepage = "https://github.com/bavix/ls-ml-toolkit"
+Repository = "https://github.com/bavix/ls-ml-toolkit"
+Issues = "https://github.com/bavix/ls-ml-toolkit/issues"
+Documentation = "https://github.com/bavix/ls-ml-toolkit#readme"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["ls_ml_toolkit*"]
+exclude = ["tests*", "test_*", "*_test*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md", "*.yml", "*.yaml", "*.json"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
