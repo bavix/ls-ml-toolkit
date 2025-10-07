@@ -17,6 +17,18 @@ import boto3
 import requests
 from botocore.exceptions import ClientError, NoCredentialsError
 
+# Import beautiful UI components
+try:
+    from .ui import (
+        Banner, StatusDisplay, Table, 
+        Colors, Icons, FileTree
+    )
+except ImportError:
+    from ls_ml_toolkit.ui import (
+        Banner, StatusDisplay, Table, 
+        Colors, Icons, FileTree
+    )
+
 # Add src directory to path when running as script
 # Get the directory containing this file
 current_dir = Path(__file__).parent
@@ -25,7 +37,7 @@ src_dir = current_dir.parent
 if str(src_dir) not in sys.path:
     sys.path.insert(0, str(src_dir))
 
-# Load environment variables from .env file
+# Load environment variables from .env file for YAML substitution
 try:
     from .env_loader import EnvLoader
     env = EnvLoader()
@@ -56,12 +68,13 @@ logger = logging.getLogger(__name__)
 class LabelStudioToYOLOConverter:
     """Converter from Label Studio format to YOLO format"""
     
-    def __init__(self, dataset_name: str, json_file: str, dataset_dir: str = "dataset", train_split: float = 0.8, val_split: float = 0.2):
+    def __init__(self, dataset_name: str, json_file: str, dataset_dir: str = "dataset", train_split: float = 0.8, val_split: float = 0.2, force_download: bool = False):
         self.dataset_name = dataset_name
         self.json_file = json_file
         self.dataset_dir = Path(dataset_dir) / dataset_name
         self.train_split = train_split
         self.val_split = val_split
+        self.force_download = force_download
         
         # Create directory structure
         self.train_images_dir = self.dataset_dir / "train" / "images"
@@ -118,7 +131,6 @@ class LabelStudioToYOLOConverter:
             self.train_labels_dir.mkdir(parents=True, exist_ok=True)
             self.val_images_dir.mkdir(parents=True, exist_ok=True)
             self.val_labels_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"✓ Created directory structure in {self.dataset_dir}")
         except Exception as e:
             logger.error(f"Error creating directory structure: {e}")
             raise
@@ -144,7 +156,6 @@ names: {self.classes}
             with open(data_yaml, 'w') as f:
                 f.write(yaml_content)
             
-            logger.info("✓ Created YOLO configuration files")
         except Exception as e:
             logger.error(f"Error creating YOLO config files: {e}")
             raise
@@ -157,7 +168,6 @@ names: {self.classes}
         # Sort data by task ID for consistent splitting
         data.sort(key=lambda x: x.get('id', 0))
         
-        logger.info(f"✓ Loaded and sorted {len(data)} tasks")
         
         # Calculate split indices
         total_tasks = len(data)
@@ -171,8 +181,16 @@ names: {self.classes}
         return train_data, val_data
     
     def download_image(self, url: str, output_path: Path) -> bool:
-        """Download image from URL"""
+        """Download image from URL if it doesn't already exist or force_download is True"""
         try:
+            # Check if file already exists and force_download is not set
+            if output_path.exists() and not self.force_download:
+                logger.debug(f"File already exists, skipping download: {output_path}")
+                return True
+            
+            # Create parent directory if it doesn't exist
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            
             if url.startswith('s3://'):
                 return self._download_from_s3(url, output_path)
             else:
@@ -209,37 +227,30 @@ names: {self.classes}
                 # Try relative import first (when used as module)
                 from .config_loader import ConfigLoader
                 config = ConfigLoader()
-                aws_config = config.get_aws_config()
-                aws_access_key = aws_config['access_key_id']
-                aws_secret_key = aws_config['secret_access_key']
-                aws_region = aws_config['region']
-                s3_endpoint = aws_config['endpoint']
+                s3_config = config.get_s3_config()
+                s3_access_key = s3_config['access_key_id']
+                s3_secret_key = s3_config['secret_access_key']
+                s3_region = s3_config['region']
+                s3_endpoint = s3_config['endpoint']
             except ImportError:
-                try:
-                    # Try absolute import (when run as script)
-                    from ls_ml_toolkit.config_loader import ConfigLoader
-                    config = ConfigLoader()
-                    aws_config = config.get_aws_config()
-                    aws_access_key = aws_config['access_key_id']
-                    aws_secret_key = aws_config['secret_access_key']
-                    aws_region = aws_config['region']
-                    s3_endpoint = aws_config['endpoint']
-                except ImportError:
-                    # Fallback to environment variables (only LS_ML_ prefixed)
-                    aws_access_key = env.get('LS_ML_S3_ACCESS_KEY_ID')
-                    aws_secret_key = env.get('LS_ML_S3_SECRET_ACCESS_KEY')
-                    aws_region = env.get('LS_ML_S3_DEFAULT_REGION', 'us-east-1')
-                    s3_endpoint = env.get('LS_ML_S3_ENDPOINT', '')
+                # Try absolute import (when run as script)
+                from ls_ml_toolkit.config_loader import ConfigLoader
+                config = ConfigLoader()
+                s3_config = config.get_s3_config()
+                s3_access_key = s3_config['access_key_id']
+                s3_secret_key = s3_config['secret_access_key']
+                s3_region = s3_config['region']
+                s3_endpoint = s3_config['endpoint']
             
-            if not aws_access_key or not aws_secret_key:
-                logger.error("AWS credentials not found in environment variables")
+            if not s3_access_key or not s3_secret_key:
+                logger.error("S3 credentials not found in configuration")
                 return False
             
             # Create S3 client
             s3_config = {
-                'aws_access_key_id': aws_access_key,
-                'aws_secret_access_key': aws_secret_key,
-                'region_name': aws_region
+                'aws_access_key_id': s3_access_key,
+                'aws_secret_access_key': s3_secret_key,
+                'region_name': s3_region
             }
             
             if s3_endpoint:
@@ -275,11 +286,7 @@ names: {self.classes}
             train_data, val_data = self.split_data()
             
             # Process training data
-            logger.info("Processing training data...")
             self._process_data_split(train_data, self.train_images_dir, self.train_labels_dir)
-            
-            # Process validation data
-            logger.info("Processing validation data...")
             self._process_data_split(val_data, self.val_images_dir, self.val_labels_dir)
             
             logger.info("✓ Dataset processing completed successfully!")
@@ -291,6 +298,10 @@ names: {self.classes}
     
     def _process_data_split(self, data: List[Dict], images_dir: Path, labels_dir: Path):
         """Process a data split (train or val)"""
+        downloaded_count = 0
+        skipped_count = 0
+        failed_count = 0
+        
         for i, task in enumerate(tqdm(data, desc="Processing tasks")):
             try:
                 # Get image URL
@@ -300,12 +311,20 @@ names: {self.classes}
                 image_filename = f"image_{task.get('id', i)}.jpg"
                 image_path = images_dir / image_filename
                 
-                # Download image
-                if not self.download_image(image_url, image_path):
-                    logger.warning(f"Failed to download {image_url}")
-                    continue
+                # Check if file already exists and force_download is not set
+                if image_path.exists() and not self.force_download:
+                    skipped_count += 1
+                    logger.debug(f"Skipping download for existing file: {image_path}")
+                else:
+                    # Download image
+                    if not self.download_image(image_url, image_path):
+                        logger.warning(f"Failed to download {image_url}")
+                        failed_count += 1
+                        # Don't continue here - still process annotations even if download failed
+                    else:
+                        downloaded_count += 1
                 
-                # Process annotations
+                # Process annotations (always, regardless of whether file was downloaded or skipped)
                 annotations = task.get('annotations', [])
                 if annotations:
                     # Get first annotation
@@ -329,7 +348,12 @@ names: {self.classes}
                 
             except Exception as e:
                 logger.error(f"Error processing task {i}: {e}")
+                failed_count += 1
                 continue
+        
+        # Log statistics
+        total_processed = downloaded_count + skipped_count + failed_count
+        logger.info(f"✓ Processed {total_processed} tasks: {downloaded_count} downloaded, {skipped_count} skipped, {failed_count} failed")
     
     def convert_annotation_to_yolo(self, annotation: Dict, image_path: Path) -> str:
         """Convert Label Studio annotation to YOLO format"""
@@ -374,7 +398,6 @@ class YOLOTrainer:
     def train_model(self, epochs: int = 50, imgsz: int = 640, batch: int = 8, device: str = "auto") -> bool:
         """Train YOLO model"""
         try:
-            logger.info("Starting YOLO model training...")
             
             # Auto-detect device if needed
             if device == "auto":
@@ -384,7 +407,6 @@ class YOLOTrainer:
             # Check if ultralytics is available
             try:
                 import ultralytics
-                logger.info(f"✓ Ultralytics version: {ultralytics.__version__}")
             except ImportError:
                 logger.error("Ultralytics not found. Please install it first:")
                 logger.error("  ml_env/bin/pip install ultralytics")
@@ -422,13 +444,11 @@ class YOLOTrainer:
 
             # Check for MPS (macOS Metal)
             if hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-                logger.info("✓ MPS (Metal Performance Shaders) available on macOS")
                 return "mps"
 
             # Check for CUDA (NVIDIA)
             if torch.cuda.is_available():
                 gpu_count = torch.cuda.device_count()
-                logger.info(f"✓ CUDA available with {gpu_count} GPU(s)")
                 return "0"  # Use first GPU
 
             # Check for ROCm (AMD) - this is more complex to detect
@@ -452,7 +472,25 @@ class YOLOTrainer:
             return "cpu"
 
 def main():
-    parser = argparse.ArgumentParser(description="Train YOLO model from Label Studio dataset")
+    # Display beautiful banner
+    Banner.display()
+    
+    parser = argparse.ArgumentParser(
+        description="Train YOLO model from Label Studio dataset",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=f"""
+{Colors.BRIGHT_CYAN}Examples:{Colors.RESET}
+  {Colors.DIM}# Basic training{Colors.RESET}
+  lsml-train dataset.json --epochs 50 --batch 8
+
+  {Colors.DIM}# Training with custom config{Colors.RESET}
+  lsml-train dataset.json --config custom.yaml --device mps
+
+  {Colors.DIM}# Force re-download images{Colors.RESET}
+  lsml-train dataset.json --force-download --epochs 100
+        """
+    )
+    
     parser.add_argument("json_file", help="Path to Label Studio JSON file")
     parser.add_argument("--dataset-name", help="Dataset name (default: basename of json file)")
     parser.add_argument("--dataset-dir", help="Dataset directory (default: from ls-ml-toolkit.yaml or 'dataset')")
@@ -466,6 +504,7 @@ def main():
     parser.add_argument("--val-split", type=float, help="Validation data split ratio (default: from ls-ml-toolkit.yaml or 0.2)")
     parser.add_argument("--optimize", action='store_true', help="Enable model optimization after export")
     parser.add_argument("--no-optimize", action='store_true', help="Disable model optimization after export")
+    parser.add_argument("--force-download", action='store_true', help="Force re-download of existing images")
     
     args = parser.parse_args()
     
@@ -476,38 +515,25 @@ def main():
         config = load_config(args.config or "ls-ml-toolkit.yaml")
         config.apply_cli_args(args)
     except ImportError:
-        try:
-            # Try absolute import (when run as script)
-            from ls_ml_toolkit.config_loader import load_config
-            config = load_config(args.config or "ls-ml-toolkit.yaml")
-            config.apply_cli_args(args)
-        except ImportError:
-            # Fallback to environment variables if config_loader is not available
-            logger.warning("config_loader not available, using environment variables")
-            config = None
+        # Try absolute import (when run as script)
+        from ls_ml_toolkit.config_loader import load_config
+        config = load_config(args.config or "ls-ml-toolkit.yaml")
+        config.apply_cli_args(args)
+    except (FileNotFoundError, RuntimeError) as e:
+        logger.error(f"Configuration error: {e}")
+        logger.error("Please ensure ls-ml-toolkit.yaml exists in the current directory")
+        sys.exit(1)
     
-    # Get configuration values with fallbacks
-    if config:
-        epochs = args.epochs or config.get('training.epochs', 50)
-        imgsz = args.imgsz or config.get('training.image_size', 640)
-        batch = args.batch or config.get('training.batch_size', 8)
-        device = args.device or config.get('training.device', 'auto')
-        output_model = args.output_model or config.get('export.model_path', 'shared/models/layout_yolo_universal.onnx')
-        dataset_dir = args.dataset_dir or config.get('dataset.base_dir', 'dataset')
-        train_split = args.train_split or config.get('dataset.train_split', 0.8)
-        val_split = args.val_split or config.get('dataset.val_split', 0.2)
-        optimize = args.optimize or (not args.no_optimize and config.get('export.optimize', True))
-    else:
-        # Fallback to environment variables
-        epochs = args.epochs or env.get_int('TRAINING_EPOCHS', 50)
-        imgsz = args.imgsz or env.get_int('TRAINING_IMAGE_SIZE', 640)
-        batch = args.batch or env.get_int('TRAINING_BATCH_SIZE', 8)
-        device = args.device or env.get('TRAINING_DEVICE', 'auto')
-        output_model = args.output_model or env.get('MODEL_OUTPUT_PATH', 'shared/models/layout_yolo_universal.onnx')
-        dataset_dir = args.dataset_dir or 'dataset'
-        train_split = args.train_split or 0.8
-        val_split = args.val_split or 0.2
-        optimize = args.optimize or (not args.no_optimize)
+    # Get configuration values from YAML
+    epochs = args.epochs or config.get('training.epochs', 50)
+    imgsz = args.imgsz or config.get('training.image_size', 640)
+    batch = args.batch or config.get('training.batch_size', 8)
+    device = args.device or config.get('training.device', 'auto')
+    output_model = args.output_model or config.get('export.model_path', 'shared/models/layout_yolo_universal.onnx')
+    dataset_dir = args.dataset_dir or config.get('dataset.base_dir', 'dataset')
+    train_split = args.train_split or config.get('dataset.train_split', 0.8)
+    val_split = args.val_split or config.get('dataset.val_split', 0.2)
+    optimize = args.optimize or (not args.no_optimize and config.get('export.optimize', True))
     
     # Determine dataset name
     if args.dataset_name:
@@ -515,42 +541,62 @@ def main():
     else:
         dataset_name = Path(args.json_file).stem
     
+    # Display configuration in beautiful table
     logger.info(f"Starting training pipeline for dataset: {dataset_name}")
-    logger.info(f"JSON file: {args.json_file}")
-    logger.info(f"Configuration:")
-    logger.info(f"  Epochs: {epochs}")
-    logger.info(f"  Image size: {imgsz}")
-    logger.info(f"  Batch size: {batch}")
-    logger.info(f"  Device: {device}")
-    logger.info(f"  Output model: {output_model}")
-    logger.info(f"  Dataset directory: {dataset_dir}")
-    logger.info(f"  Train split: {train_split}")
-    logger.info(f"  Val split: {val_split}")
-    logger.info(f"  Optimize model: {optimize}")
+    
+    config_table = Table(["Setting", "Value"], "modern")
+    config_table.add_row(["JSON file", str(args.json_file)])
+    config_table.add_row(["Epochs", str(epochs)])
+    config_table.add_row(["Image size", str(imgsz)])
+    config_table.add_row(["Batch size", str(batch)])
+    config_table.add_row(["Device", str(device)])
+    config_table.add_row(["Output model", str(output_model)])
+    config_table.add_row(["Dataset directory", str(dataset_dir)])
+    config_table.add_row(["Train split", f"{train_split:.1%}"])
+    config_table.add_row(["Val split", f"{val_split:.1%}"])
+    config_table.add_row(["Optimize model", "Yes" if optimize else "No"])
+    config_table.add_row(["Force download", "Yes" if args.force_download else "No"])
+    
+    print(f"\n{Colors.BOLD}{Colors.BRIGHT_WHITE}{Icons.CONFIG} Configuration{Colors.RESET}")
+    config_table.display()
     
     try:
+        # Create status display for the entire process
+        status = StatusDisplay("Training Pipeline")
+        status.add_step("Convert Label Studio dataset to YOLO format")
+        status.add_step("Train YOLO model")
+        status.add_step("Export to ONNX format")
+        if optimize:
+            status.add_step("Optimize ONNX model")
+        status.start()
+        
         # Step 1: Convert dataset
+        status.update_step(0, "Processing dataset...")
         converter = LabelStudioToYOLOConverter(
             dataset_name, 
             args.json_file, 
             dataset_dir=dataset_dir,
             train_split=train_split,
-            val_split=val_split
+            val_split=val_split,
+            force_download=args.force_download
         )
         if not converter.process_dataset():
             logger.error("Dataset processing failed!")
             sys.exit(1)
+        status.update_step(1, "Dataset conversion completed")
         
         # Step 2: Train model
+        status.update_step(1, "Starting model training...")
         trainer = YOLOTrainer(converter.dataset_dir)
         if not trainer.train_model(epochs, imgsz, batch, device):
             logger.error("Model training failed!")
             sys.exit(1)
+        status.update_step(2, "Model training completed")
         
         # Step 3: Export to ONNX
+        status.update_step(2, "Exporting to ONNX format...")
         trained_model = Path("runs/detect/train/weights/best.pt")
         if trained_model.exists():
-            logger.info("Exporting model to ONNX...")
             try:
                 from ultralytics import YOLO
                 
@@ -584,7 +630,7 @@ def main():
         
         # Step 4: Optimize ONNX model (if enabled)
         if optimize:
-            logger.info("Optimizing ONNX model for mobile deployment...")
+            status.update_step(3, "Optimizing ONNX model...")
             try:
                 # Try relative import first (when used as module)
                 from .optimize_onnx import optimize_onnx_model
@@ -608,8 +654,17 @@ def main():
         else:
             logger.info("Model optimization skipped (disabled)")
         
-        logger.info("✓ Training pipeline completed successfully!")
-        logger.info(f"Final model: {output_model}")
+        # Complete the process
+        status.complete()
+        
+        # Display final results
+        print(f"\n{Colors.BRIGHT_GREEN}{Icons.SUCCESS} Training pipeline completed successfully!{Colors.RESET}")
+        print(f"{Colors.BRIGHT_WHITE}Final model: {Colors.BRIGHT_CYAN}{output_model}{Colors.RESET}")
+        
+        # Show file tree of results
+        if Path("runs/detect/train").exists():
+            print(f"\n{Colors.BOLD}{Colors.BRIGHT_WHITE}{Icons.FOLDER} Training Results{Colors.RESET}")
+            FileTree.display(Path("runs/detect/train"), max_depth=2)
         
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")

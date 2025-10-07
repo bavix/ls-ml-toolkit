@@ -33,7 +33,7 @@ else:
 
 setup(
     name="ls-ml-toolkit",
-    version="1.0.0",
+    version="1.0.1",
     author="Babichev Maxim",
     author_email="info@babichev.net",
     description="Label Studio ML Toolkit: Convert, Train, Optimize object detection models",

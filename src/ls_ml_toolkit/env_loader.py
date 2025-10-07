@@ -19,11 +19,7 @@ class EnvLoader:
     def load_env_file(self):
         """Load environment variables from .env file"""
         if not self.env_file.exists():
-            print(f"⚠️  Warning: {self.env_file} not found")
-            print(f"   Copy {self.env_file.with_suffix('.example')} to {self.env_file} and configure it")
             return
-        
-        print(f"📄 Loading environment variables from {self.env_file}")
         
         with open(self.env_file, 'r', encoding='utf-8') as f:
             for line_num, line in enumerate(f, 1):
@@ -48,10 +44,6 @@ class EnvLoader:
                     self.variables[key] = value
                     # Also set in os.environ for compatibility with other modules
                     os.environ[key] = value
-                else:
-                    print(f"⚠️  Warning: Invalid line {line_num} in {self.env_file}: {line}")
-        
-        print(f"✅ Loaded {len(self.variables)} environment variables")
     
     def get(self, key: str, default: Any = None) -> Any:
         """Get environment variable as string"""
@@ -79,7 +71,7 @@ class EnvLoader:
     def list_variables(self) -> Dict[str, str]:
         """List all loaded variables (without sensitive values)"""
         sensitive_keys = {
-            'LS_ML_AWS_ACCESS_KEY_ID', 'LS_ML_AWS_SECRET_ACCESS_KEY', 
+            'LS_ML_S3_ACCESS_KEY_ID', 'LS_ML_S3_SECRET_ACCESS_KEY', 
             'PASSWORD', 'SECRET', 'KEY', 'TOKEN'
         }
         

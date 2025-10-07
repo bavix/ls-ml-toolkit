@@ -40,10 +40,7 @@ class ConfigLoader:
     def load_config(self):
         """Load configuration from YAML file"""
         if not self.config_file.exists():
-            print(f"⚠️  Warning: {self.config_file} not found")
-            print(f"   Using default configuration")
-            self.config = self._get_default_config()
-            return
+            raise FileNotFoundError(f"Configuration file not found: {self.config_file}")
         
         try:
             with open(self.config_file, 'r', encoding='utf-8') as f:
@@ -51,11 +48,9 @@ class ConfigLoader:
             
             # Process environment variables in the config
             self.config = self._process_env_variables(raw_config)
-            print(f"📄 Loaded configuration from {self.config_file}")
+            return self.config
         except Exception as e:
-            print(f"❌ Error loading config: {e}")
-            print(f"   Using default configuration")
-            self.config = self._get_default_config()
+            raise RuntimeError(f"Error loading configuration from {self.config_file}: {e}")
     
     def _process_env_variables(self, config: Dict[str, Any]) -> Dict[str, Any]:
         """Process environment variables in configuration"""
@@ -92,76 +87,6 @@ class ConfigLoader:
         
         return re.sub(pattern, replace_var, value)
     
-    def _get_default_config(self) -> Dict[str, Any]:
-        """Get default configuration"""
-        return {
-            "dataset": {
-                "base_dir": "dataset",
-                "train_split": 0.8,
-                "val_split": 0.2,
-                "structure": {
-                    "train_images": "train/images",
-                    "train_labels": "train/labels",
-                    "val_images": "val/images",
-                    "val_labels": "val/labels",
-                    "classes_file": "classes.txt",
-                    "data_yaml": "data.yaml"
-                }
-            },
-            "training": {
-                "model": "yolo11n.pt",
-                "epochs": 50,
-                "batch_size": 8,
-                "image_size": 640,
-                "device": "auto",
-                "project_dir": "runs/detect",
-                "name": "train",
-                "save_period": 10,
-                "patience": 50,
-                "workers": 8
-            },
-            "export": {
-                "model_path": "shared/models/layout_yolo_universal.onnx",
-                "format": "onnx",
-                "imgsz": 640,
-                "opset": 11,
-                "simplify": True,
-                "optimize": True,
-                "optimization_level": "all"
-            },
-            "aws": {
-                "access_key_id": "",
-                "secret_access_key": "",
-                "region": "us-east-1",
-                "endpoint": ""
-            },
-            "logging": {
-                "level": "INFO",
-                "format": "%(asctime)s - %(levelname)s - %(message)s",
-                "file": None
-            },
-            "development": {
-                "debug": False,
-                "test_mode": False,
-                "log_level": "INFO"
-            },
-            "platform": {
-                "auto_detect_gpu": True,
-                "force_device": None,
-                "macos": {
-                    "device": "mps",
-                    "batch_size": 16
-                },
-                "linux_nvidia": {
-                    "device": "0",
-                    "batch_size": 32
-                },
-                "linux_amd": {
-                    "device": "0",
-                    "batch_size": 16
-                }
-            },
-        }
     
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value by key (supports dot notation)"""
