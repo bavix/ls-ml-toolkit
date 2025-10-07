@@ -23,7 +23,7 @@ Usage:
     trainer.train_model(epochs=50, device='auto')
 """
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 __author__ = "Babichev Maxim"
 __email__ = "info@babichev.net"
 
