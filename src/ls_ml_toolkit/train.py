@@ -683,8 +683,8 @@ def main():
             
             # Get optimized model path from config
             try:
-                optimized_model_path = config["export"]["optimized_model_path"]
-            except KeyError:
+                optimized_model_path = config.config["export"]["optimized_model_path"]
+            except (KeyError, AttributeError):
                 # Fallback to default naming if not specified in config
                 optimized_model_path = str(Path(output_model).with_suffix('')) + '_optimized.onnx'
             
