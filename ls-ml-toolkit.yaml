@@ -45,6 +45,9 @@ export:
   # Output model path (can be overridden with --output-model flag)
   model_path: "shared/models/layout_yolo_universal.onnx"
   
+  # Optimized model path (separate from regular export)
+  optimized_model_path: "shared/models/layout_yolo_universal_optimized.onnx"
+  
   # ONNX export settings
   format: "onnx"
   imgsz: 640
