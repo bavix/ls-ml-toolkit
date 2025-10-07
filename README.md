@@ -175,7 +175,7 @@ lsml-train dataset/v0.json --config custom-config.yaml
 
 ```
 ls-ml-toolkit/
-├── src/ls_ml_toolkit/          # Main package source
+├── ls_ml_toolkit/              # Main package source
 │   ├── __init__.py
 │   ├── train.py                # Main training script
 │   ├── config_loader.py        # Configuration management
@@ -183,9 +183,9 @@ ls-ml-toolkit/
 │   ├── optimize_onnx.py        # ONNX optimization
 │   ├── install_deps.py         # Dependency installer
 │   └── setup_env.py            # Environment setup
-├── tests/                      # Test suite
-├── requirements*.txt           # Platform-specific dependencies
-├── pyproject*.toml            # Platform-specific package configs
+├── requirements.txt            # Dependencies
+├── pyproject.toml             # Package configuration
+├── setup.py                   # Setup script
 ├── ls-ml-toolkit.yaml         # Main configuration
 ├── env.example                # Environment template
 └── README.md                  # This file
