@@ -437,6 +437,25 @@ class YOLOTrainer:
             logger.error(f"Error during training: {e}")
             return False
     
+    def _find_latest_training_dir(self) -> Path:
+        """Find the latest training directory created by YOLO"""
+        project_path = Path("runs/detect")
+        if not project_path.exists():
+            return None
+        
+        # Find all training directories
+        training_dirs = []
+        for item in project_path.iterdir():
+            if item.is_dir() and item.name.startswith("train"):
+                training_dirs.append(item)
+        
+        if not training_dirs:
+            return None
+        
+        # Sort by modification time (newest first)
+        training_dirs.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+        return training_dirs[0]
+    
     def _detect_best_device(self) -> str:
         """Auto-detect the best available device for training"""
         try:
@@ -588,6 +607,7 @@ def main():
         # Step 2: Train model
         status.update_step(1, "Starting model training...")
         trainer = YOLOTrainer(converter.dataset_dir)
+        
         if not trainer.train_model(epochs, imgsz, batch, device):
             logger.error("Model training failed!")
             sys.exit(1)
@@ -595,7 +615,15 @@ def main():
         
         # Step 3: Export to ONNX
         status.update_step(2, "Exporting to ONNX format...")
-        trained_model = Path("runs/detect/train/weights/best.pt")
+        
+        # Find the latest training directory created by YOLO
+        latest_training_dir = trainer._find_latest_training_dir()
+        if not latest_training_dir:
+            logger.error("No training directory found!")
+            sys.exit(1)
+        
+        trained_model = latest_training_dir / "weights" / "best.pt"
+        logger.info(f"Using training results from: {latest_training_dir}")
         if trained_model.exists():
             try:
                 from ultralytics import YOLO
@@ -662,9 +690,9 @@ def main():
         print(f"{Colors.BRIGHT_WHITE}Final model: {Colors.BRIGHT_CYAN}{output_model}{Colors.RESET}")
         
         # Show file tree of results
-        if Path("runs/detect/train").exists():
-            print(f"\n{Colors.BOLD}{Colors.BRIGHT_WHITE}{Icons.FOLDER} Training Results{Colors.RESET}")
-            FileTree.display(Path("runs/detect/train"), max_depth=2)
+        if latest_training_dir and latest_training_dir.exists():
+            print(f"\n{Colors.BOLD}{Colors.BRIGHT_WHITE}{Icons.FOLDER} Training Results {latest_training_dir}{Colors.RESET}")
+            FileTree.display(latest_training_dir, max_depth=2)
         
     except Exception as e:
         logger.error(f"Pipeline failed: {e}")

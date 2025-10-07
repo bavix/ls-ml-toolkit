@@ -35,10 +35,6 @@ training:
   image_size: 640
   device: "auto"  # auto, cpu, mps, 0, 1, etc.
   
-  # Training directories
-  project_dir: "runs/detect"
-  name: "train"
-  
   # Output settings
   save_period: 10
   patience: 50
