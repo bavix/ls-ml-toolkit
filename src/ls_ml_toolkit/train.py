@@ -666,8 +666,12 @@ def main():
                 # Try absolute import (when run as script)
                 from ls_ml_toolkit.optimize_onnx import optimize_onnx_model
                 
-                # Create optimized model path
-                optimized_model_path = str(Path(output_model).with_suffix('')) + '_optimized.onnx'
+                # Get optimized model path from config
+                try:
+                    optimized_model_path = config["export"]["optimized_model_path"]
+                except KeyError:
+                    # Fallback to default naming if not specified in config
+                    optimized_model_path = str(Path(output_model).with_suffix('')) + '_optimized.onnx'
                 
                 if optimize_onnx_model(output_model, optimized_model_path, "all"):
                     logger.info(f"✓ Model optimization completed!")

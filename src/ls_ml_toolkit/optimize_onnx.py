@@ -200,7 +200,13 @@ def main():
     if args.output:
         output_path = Path(args.output)
     else:
-        output_path = input_path.parent / f"{input_path.stem}_optimized{input_path.suffix}"
+        # Try to get default output path from config
+        try:
+            config = config_loader.load_config()
+            output_path = Path(config["export"]["optimized_model_path"])
+        except (KeyError, FileNotFoundError):
+            # Fallback to default naming
+            output_path = input_path.parent / f"{input_path.stem}_optimized{input_path.suffix}"
     
     # Create output directory if needed
     output_path.parent.mkdir(parents=True, exist_ok=True)

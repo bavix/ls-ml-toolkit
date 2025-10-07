@@ -104,6 +104,13 @@ training:
   image_size: 640
   device: "auto"
 
+# Model Export Configuration
+export:
+  model_path: "shared/models/layout_yolo_universal.onnx"
+  optimized_model_path: "shared/models/layout_yolo_universal_optimized.onnx"  # Optional
+  optimize: true
+  optimization_level: "all"
+
 # S3 Configuration (uses .env for sensitive data)
 s3:
   access_key_id: "${LS_ML_S3_ACCESS_KEY_ID}"  # From .env file
@@ -256,6 +263,26 @@ training:
 - **Regular configuration**: epochs, batch_size, image_size
 - **Default values**: model paths, directory structures
 - **Platform settings**: device detection, optimization levels
+
+## Model Export Configuration
+
+### Model Paths
+- **`model_path`**: Path for the regular ONNX export (required)
+- **`optimized_model_path`**: Path for the optimized ONNX model (optional)
+
+### Fallback Behavior
+If `optimized_model_path` is not specified in the configuration:
+- **Training script**: Uses `{model_path}_optimized.onnx` as fallback
+- **Optimization script**: Uses `{input_model}_optimized.onnx` as fallback
+
+### Examples
+```yaml
+export:
+  model_path: "models/my_model.onnx"
+  optimized_model_path: "models/my_model_optimized.onnx"  # Optional
+  optimize: true
+  optimization_level: "all"
+```
 - **All non-sensitive settings**
 
 ### 🔒 Security:
