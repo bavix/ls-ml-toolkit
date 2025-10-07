@@ -282,6 +282,7 @@ Thumbs.db
 *.yaml
 !ls-ml-toolkit.yaml
 *.yml
+!**/.github/workflows/*.yml
 !env.example
 
 # Test files
