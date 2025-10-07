@@ -67,6 +67,8 @@ def optimize_onnx_model(input_path: str, output_path: str, optimization_level: s
     Returns:
         bool: True if optimization successful, False otherwise
     """
+    logger = logging.getLogger(__name__)
+    
     try:
         import onnx
         import shutil
@@ -125,7 +127,7 @@ def optimize_onnx_model(input_path: str, output_path: str, optimization_level: s
         # Get file sizes for comparison
         input_size = Path(input_path).stat().st_size
         output_size = Path(output_path).stat().st_size
-        reduction = ((input_size - output_size) / input_size) * 100
+        reduction = ((input_size - output_size) / input_size) * 100 if input_size > 0 else 0
         
         logger.info(f"✓ Model optimization completed!")
         logger.info(f"  Input size: {input_size / (1024*1024):.2f} MB")

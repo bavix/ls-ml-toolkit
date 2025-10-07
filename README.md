@@ -18,6 +18,9 @@ A comprehensive machine learning toolkit for converting Label Studio annotations
 - **Environment Variable Substitution**: Support for `${VAR_NAME}` and `${VAR_NAME:-default}` syntax in YAML
 - **Flexible Import System**: Works both as a Python module and as standalone scripts
 - **Secure Configuration**: Sensitive data in .env, regular settings in YAML
+- **Modern CLI Interface**: Beautiful terminal output with progress indicators and status displays
+- **Smart NMS Configuration**: Optimized Non-Maximum Suppression settings to reduce warnings
+- **Automatic Training Directory Detection**: Finds the latest YOLO training output automatically
 
 ## Quick Start
 
@@ -103,6 +106,12 @@ training:
   batch_size: 8
   image_size: 640
   device: "auto"
+  
+  # NMS (Non-Maximum Suppression) settings
+  nms:
+    iou_threshold: 0.7  # IoU threshold for NMS (0.0-1.0) - higher = fewer detections
+    conf_threshold: 0.25  # Confidence threshold for predictions (0.0-1.0) - higher = fewer detections
+    max_det: 300  # Maximum number of detections per image - lower = faster processing
 
 # Model Export Configuration
 export:
@@ -167,17 +176,25 @@ pytest tests/
 ### Building Packages
 
 ```bash
-# Build all platform-specific packages
-python build_all.py
-
-# Build individual packages
+# Build package
 python -m build
+
+# Install in development mode
+pip install -e .
 ```
 
 ## Command Line Tools
 
 - **`lsml-train`**: Train YOLO models from Label Studio datasets
 - **`lsml-optimize`**: Optimize ONNX models for deployment
+
+### CLI Features
+
+- **Beautiful Interface**: Modern terminal UI with colors, icons, and progress indicators
+- **Status Tracking**: Real-time progress updates during training and optimization
+- **Configuration Display**: Shows current settings in a formatted table
+- **File Tree Display**: Visual representation of training results and file structure
+- **Error Handling**: Clear error messages and troubleshooting guidance
 
 ## Examples
 
@@ -198,7 +215,8 @@ lsml-train dataset/v0.json \
   --batch 16 \
   --device mps \
   --imgsz 640 \
-  --optimize
+  --optimize \
+  --force-download
 ```
 
 ### Using Configuration File
@@ -209,6 +227,27 @@ lsml-train dataset/v0.json --config custom-config.yaml
 
 # Override specific settings via command line
 lsml-train dataset/v0.json --epochs 100 --batch 16 --device mps
+```
+
+### Advanced Usage Examples
+
+```bash
+# Force re-download of existing images
+lsml-train dataset/v0.json --force-download
+
+# Train with custom NMS settings (via YAML config)
+# Edit ls-ml-toolkit.yaml:
+# training:
+#   nms:
+#     iou_threshold: 0.8
+#     conf_threshold: 0.3
+#     max_det: 200
+
+# Optimize existing ONNX model
+lsml-optimize model.onnx --level extended
+
+# Use custom output path for optimization
+lsml-optimize model.onnx --output optimized_model.onnx
 ```
 
 ### Quick Setup Guide
@@ -232,11 +271,11 @@ lsml-train your_dataset.json --epochs 50 --batch 8
 The YAML configuration supports environment variable substitution **only for sensitive data**:
 
 ```yaml
-# AWS S3 Configuration (uses .env variables)
-aws:
-  access_key_id: "${LS_ML_AWS_ACCESS_KEY_ID}"  # From .env file
-  secret_access_key: "${LS_ML_AWS_SECRET_ACCESS_KEY}"  # From .env file
-  region: "${LS_ML_AWS_DEFAULT_REGION:-us-east-1}"  # From .env with default
+# S3 Configuration (uses .env variables)
+s3:
+  access_key_id: "${LS_ML_S3_ACCESS_KEY_ID}"  # From .env file
+  secret_access_key: "${LS_ML_S3_SECRET_ACCESS_KEY}"  # From .env file
+  region: "${LS_ML_S3_DEFAULT_REGION:-us-east-1}"  # From .env with default
   endpoint: "${LS_ML_S3_ENDPOINT:-}"  # From .env (optional)
 
 # Regular configuration (no env vars needed)
@@ -294,19 +333,20 @@ export:
 
 ```
 ls-ml-toolkit/
-├── ls_ml_toolkit/              # Main package source
-│   ├── __init__.py
-│   ├── train.py                # Main training script
-│   ├── config_loader.py        # Configuration management with .env support
-│   ├── env_loader.py           # Environment variable loader
-│   ├── optimize_onnx.py        # ONNX optimization
-│   ├── install_deps.py         # Dependency installer
-│   └── setup_env.py            # Environment setup
+├── src/
+│   └── ls_ml_toolkit/         # Main package source
+│       ├── __init__.py
+│       ├── train.py            # Main training script
+│       ├── config_loader.py    # Configuration management with .env support
+│       ├── env_loader.py       # Environment variable loader
+│       ├── optimize_onnx.py    # ONNX optimization
+│       └── ui.py               # CLI UI components
+├── tests/                      # Test files
 ├── requirements.txt            # Dependencies
 ├── pyproject.toml             # Package configuration
 ├── setup.py                   # Setup script
 ├── ls-ml-toolkit.yaml         # Main configuration with env var substitution
-├── .env.example               # Environment template
+├── env.example                # Environment template
 ├── .env                       # Your environment variables (create from .env.example)
 └── README.md                  # This file
 ```
@@ -320,6 +360,33 @@ ls-ml-toolkit/
 5. Submit a pull request
 
 ## Troubleshooting
+
+### NMS Time Limit Warnings
+
+If you see `WARNING ⚠️ NMS time limit 2.800s exceeded`:
+
+**What it means:**
+- NMS (Non-Maximum Suppression) operation is taking too long
+- This can slow down validation and inference
+- Usually happens with many objects or suboptimal settings
+
+**How to fix:**
+1. **Optimize NMS settings** in `ls-ml-toolkit.yaml`:
+   ```yaml
+   training:
+     nms:
+       iou_threshold: 0.8    # Higher = fewer detections (0.7-0.9)
+       conf_threshold: 0.3   # Higher = fewer detections (0.25-0.5)
+       max_det: 200          # Lower = fewer detections (100-300)
+   ```
+
+2. **Reduce batch size** if memory allows:
+   ```yaml
+   training:
+     batch_size: 4  # Reduce from 8 to 4
+   ```
+
+3. **Optimize other parameters**: Focus on `iou_threshold`, `conf_threshold`, and `max_det` for better performance
 
 ### Environment Variables Not Loading
 
@@ -347,6 +414,22 @@ If you get import errors when running scripts:
 1. **Install in development mode**: `pip install -e .`
 2. **Check Python path**: Ensure the package is in your Python path
 3. **Use absolute imports**: The toolkit supports both relative and absolute imports
+
+### Training Directory Issues
+
+If the script can't find the latest training directory:
+
+1. **Check YOLO output**: Ensure `runs/detect/` directory exists
+2. **Verify permissions**: Make sure the script can read the directory
+3. **Manual path**: The script automatically finds the latest `train*` directory
+
+### ONNX Optimization Issues
+
+If ONNX optimization fails:
+
+1. **Install dependencies**: `pip install onnx onnxruntime`
+2. **Check model format**: Ensure input is a valid ONNX model
+3. **Use fallback**: The script will use default naming if config path is missing
 
 ## License
 

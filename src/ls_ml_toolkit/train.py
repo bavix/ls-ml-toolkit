@@ -395,7 +395,7 @@ class YOLOTrainer:
     def __init__(self, dataset_dir: Path):
         self.dataset_dir = Path(dataset_dir)
     
-    def train_model(self, epochs: int = 50, imgsz: int = 640, batch: int = 8, device: str = "auto") -> bool:
+    def train_model(self, epochs: int = 50, imgsz: int = 640, batch: int = 8, device: str = "auto", nms_config: dict = None) -> bool:
         """Train YOLO model"""
         try:
             
@@ -416,19 +416,31 @@ class YOLOTrainer:
             from ultralytics import YOLO
             model = YOLO('yolo11n.pt')
             
+            # Prepare training arguments
+            train_args = {
+                'data': str(self.dataset_dir / "data.yaml"),
+                'epochs': epochs,
+                'imgsz': imgsz,
+                'batch': batch,
+                'device': device,
+                'project': "runs/detect",
+                'name': "train",
+                'save_period': 10,
+                'patience': 50,
+                'workers': 8
+            }
+            
+            # Add NMS settings if provided
+            if nms_config:
+                train_args.update({
+                    'iou': nms_config.get('iou_threshold', 0.7),
+                    'conf': nms_config.get('conf_threshold', 0.25),
+                    'max_det': nms_config.get('max_det', 300)
+                })
+                logger.info(f"NMS settings: iou={train_args['iou']}, conf={train_args['conf']}, max_det={train_args['max_det']}")
+            
             # Train model
-            results = model.train(
-                data=str(self.dataset_dir / "data.yaml"),
-                epochs=epochs,
-                imgsz=imgsz,
-                batch=batch,
-                device=device,
-                project="runs/detect",
-                name="train",
-                save_period=10,
-                patience=50,
-                workers=8
-            )
+            results = model.train(**train_args)
             
             logger.info("✓ Training completed successfully!")
             return True
@@ -608,7 +620,10 @@ def main():
         status.update_step(1, "Starting model training...")
         trainer = YOLOTrainer(converter.dataset_dir)
         
-        if not trainer.train_model(epochs, imgsz, batch, device):
+        # Get NMS settings from config
+        nms_config = config.get("training", {}).get("nms")
+        
+        if not trainer.train_model(epochs, imgsz, batch, device, nms_config):
             logger.error("Model training failed!")
             sys.exit(1)
         status.update_step(2, "Model training completed")
@@ -665,20 +680,20 @@ def main():
             except ImportError:
                 # Try absolute import (when run as script)
                 from ls_ml_toolkit.optimize_onnx import optimize_onnx_model
-                
-                # Get optimized model path from config
-                try:
-                    optimized_model_path = config["export"]["optimized_model_path"]
-                except KeyError:
-                    # Fallback to default naming if not specified in config
-                    optimized_model_path = str(Path(output_model).with_suffix('')) + '_optimized.onnx'
-                
+            
+            # Get optimized model path from config
+            try:
+                optimized_model_path = config.config["export"]["optimized_model_path"]
+            except (KeyError, AttributeError):
+                # Fallback to default naming if not specified in config
+                optimized_model_path = str(Path(output_model).with_suffix('')) + '_optimized.onnx'
+            
+            try:
                 if optimize_onnx_model(output_model, optimized_model_path, "all"):
                     logger.info(f"✓ Model optimization completed!")
                     logger.info(f"Optimized model: {optimized_model_path}")
                 else:
                     logger.warning("Model optimization failed, but training completed successfully")
-                    
             except ImportError:
                 logger.warning("ONNX optimization tools not available. Install with: pip install onnxruntime-tools")
             except Exception as e:
