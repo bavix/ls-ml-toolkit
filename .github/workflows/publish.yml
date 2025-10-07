@@ -47,7 +47,19 @@ jobs:
         VERSION=${GITHUB_REF#refs/tags/v}
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         
+    - name: Check if release exists
+      id: check_release
+      run: |
+        if gh release view ${{ github.ref_name }} >/dev/null 2>&1; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
     - name: Create GitHub Release
+      if: steps.check_release.outputs.exists == 'false'
       uses: actions/create-release@v1
       id: create_release
       env:
@@ -65,7 +77,22 @@ jobs:
         draft: false
         prerelease: false
         
+    - name: Update GitHub Release
+      if: steps.check_release.outputs.exists == 'true'
+      run: |
+        gh release edit ${{ github.ref_name }} \
+          --title "Release ${{ steps.version.outputs.version }}" \
+          --notes "## Installation
+
+        Install from PyPI:
+        \`\`\`bash
+        pip install ls-ml-toolkit==${{ steps.version.outputs.version }}
+        \`\`\`"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
     - name: Upload Release Assets
+      if: steps.check_release.outputs.exists == 'false'
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -74,6 +101,16 @@ jobs:
         asset_path: dist/
         asset_name: dist
         asset_content_type: application/zip
+        
+    - name: Upload Release Assets (existing release)
+      if: steps.check_release.outputs.exists == 'true'
+      run: |
+        # Delete existing assets if any
+        gh release delete-asset ${{ github.ref_name }} dist 2>/dev/null || true
+        # Upload new assets
+        gh release upload ${{ github.ref_name }} dist/* --clobber
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
