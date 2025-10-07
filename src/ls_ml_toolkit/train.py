@@ -8,20 +8,27 @@ import os
 import sys
 import json
 import argparse
-import subprocess
 import urllib.parse
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 import logging
 from tqdm import tqdm
 import boto3
 import requests
 from botocore.exceptions import ClientError, NoCredentialsError
 
-# Load environment variables
+# Add src directory to path when running as script
+# Get the directory containing this file
+current_dir = Path(__file__).parent
+# Add the parent directory (src) to sys.path
+src_dir = current_dir.parent
+if str(src_dir) not in sys.path:
+    sys.path.insert(0, str(src_dir))
+
+# Load environment variables from .env file
 try:
-    from env_loader import load_env
-    env = load_env()
+    from .env_loader import EnvLoader
+    env = EnvLoader()
 except ImportError:
     # Fallback if env_loader is not available
     class MockEnv:
@@ -199,19 +206,30 @@ names: {self.classes}
             
             # Get S3 credentials from config
             try:
-                from config_loader import load_config
-                config = load_config()
+                # Try relative import first (when used as module)
+                from .config_loader import ConfigLoader
+                config = ConfigLoader()
                 aws_config = config.get_aws_config()
                 aws_access_key = aws_config['access_key_id']
                 aws_secret_key = aws_config['secret_access_key']
                 aws_region = aws_config['region']
                 s3_endpoint = aws_config['endpoint']
             except ImportError:
-                # Fallback to environment variables (only LS_ML_ prefixed)
-                aws_access_key = os.getenv('LS_ML_AWS_ACCESS_KEY_ID')
-                aws_secret_key = os.getenv('LS_ML_AWS_SECRET_ACCESS_KEY')
-                aws_region = 'us-east-1'
-                s3_endpoint = ''
+                try:
+                    # Try absolute import (when run as script)
+                    from ls_ml_toolkit.config_loader import ConfigLoader
+                    config = ConfigLoader()
+                    aws_config = config.get_aws_config()
+                    aws_access_key = aws_config['access_key_id']
+                    aws_secret_key = aws_config['secret_access_key']
+                    aws_region = aws_config['region']
+                    s3_endpoint = aws_config['endpoint']
+                except ImportError:
+                    # Fallback to environment variables (only LS_ML_ prefixed)
+                    aws_access_key = env.get('LS_ML_S3_ACCESS_KEY_ID')
+                    aws_secret_key = env.get('LS_ML_S3_SECRET_ACCESS_KEY')
+                    aws_region = env.get('LS_ML_S3_DEFAULT_REGION', 'us-east-1')
+                    s3_endpoint = env.get('LS_ML_S3_ENDPOINT', '')
             
             if not aws_access_key or not aws_secret_key:
                 logger.error("AWS credentials not found in environment variables")
@@ -453,13 +471,20 @@ def main():
     
     # Load configuration from YAML file
     try:
-        from config_loader import load_config
+        # Try relative import first (when used as module)
+        from .config_loader import load_config
         config = load_config(args.config or "ls-ml-toolkit.yaml")
         config.apply_cli_args(args)
     except ImportError:
-        # Fallback to environment variables if config_loader is not available
-        logger.warning("config_loader not available, using environment variables")
-        config = None
+        try:
+            # Try absolute import (when run as script)
+            from ls_ml_toolkit.config_loader import load_config
+            config = load_config(args.config or "ls-ml-toolkit.yaml")
+            config.apply_cli_args(args)
+        except ImportError:
+            # Fallback to environment variables if config_loader is not available
+            logger.warning("config_loader not available, using environment variables")
+            config = None
     
     # Get configuration values with fallbacks
     if config:
@@ -561,7 +586,11 @@ def main():
         if optimize:
             logger.info("Optimizing ONNX model for mobile deployment...")
             try:
-                from optimize_onnx import optimize_onnx_model
+                # Try relative import first (when used as module)
+                from .optimize_onnx import optimize_onnx_model
+            except ImportError:
+                # Try absolute import (when run as script)
+                from ls_ml_toolkit.optimize_onnx import optimize_onnx_model
                 
                 # Create optimized model path
                 optimized_model_path = str(Path(output_model).with_suffix('')) + '_optimized.onnx'

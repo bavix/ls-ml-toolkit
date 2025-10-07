@@ -31,17 +31,17 @@ __email__ = "info@babichev.net"
 try:
     from .train import LabelStudioToYOLOConverter, YOLOTrainer
     from .optimize_onnx import optimize_onnx_model
-    from .env_loader import load_env
+    from .env_loader import EnvLoader
 except ImportError:
     # Handle import errors gracefully
     LabelStudioToYOLOConverter = None
     YOLOTrainer = None
     optimize_onnx_model = None
-    load_env = None
+    EnvLoader = None
 
 __all__ = [
     "LabelStudioToYOLOConverter",
     "YOLOTrainer", 
     "optimize_onnx_model",
-    "load_env",
+    "EnvLoader",
 ]

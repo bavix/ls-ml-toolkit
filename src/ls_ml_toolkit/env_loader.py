@@ -5,7 +5,6 @@ Loads environment variables from .env file with type-safe access
 """
 
 import os
-import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -47,6 +46,8 @@ class EnvLoader:
                         value = value[1:-1]
                     
                     self.variables[key] = value
+                    # Also set in os.environ for compatibility with other modules
+                    os.environ[key] = value
                 else:
                     print(f"⚠️  Warning: Invalid line {line_num} in {self.env_file}: {line}")
         

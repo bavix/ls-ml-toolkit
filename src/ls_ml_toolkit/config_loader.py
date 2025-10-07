@@ -5,12 +5,11 @@ Loads configuration from YAML file with command-line argument overrides
 """
 
 import os
-import sys
 import yaml
 import argparse
 import re
 from pathlib import Path
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any
 
 class ConfigLoader:
     """Load and manage configuration from YAML file"""
@@ -18,7 +17,25 @@ class ConfigLoader:
     def __init__(self, config_file: str = "ls-ml-toolkit.yaml"):
         self.config_file = Path(config_file)
         self.config = {}
+        self._load_env_file()
         self.load_config()
+    
+    def _load_env_file(self):
+        """Load .env file if it exists"""
+        try:
+            from .env_loader import EnvLoader
+            env_loader = EnvLoader()
+            # EnvLoader already loads variables into os.environ
+        except ImportError:
+            # Fallback: try to load .env file manually
+            env_file = Path('.env')
+            if env_file.exists():
+                with open(env_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#') and '=' in line:
+                            key, value = line.split('=', 1)
+                            os.environ[key.strip()] = value.strip()
     
     def load_config(self):
         """Load configuration from YAML file"""
@@ -64,14 +81,14 @@ class ConfigLoader:
             default_value = match.group(2) if match.group(2) is not None else ""
             
             # Get environment variable value
-            env_value = os.environ.get(var_name, default_value)
+            env_value = os.environ.get(var_name)
             
-            # If no default and no env var, return the original string
-            if not env_value and not default_value:
-                print(f"⚠️  Warning: Environment variable {var_name} not set")
-                return match.group(0)
-            
-            return env_value
+            # If env var exists, use it; otherwise use default (even if empty)
+            if env_value is not None:
+                return env_value
+            else:
+                # Use default value (even if it's empty)
+                return default_value
         
         return re.sub(pattern, replace_var, value)
     
@@ -223,13 +240,13 @@ class ConfigLoader:
             'optimization_level': self.get('export.optimization_level', 'all')
         }
     
-    def get_aws_config(self) -> Dict[str, Any]:
-        """Get AWS configuration"""
+    def get_s3_config(self) -> Dict[str, Any]:
+        """Get S3 configuration"""
         return {
-            'access_key_id': self.get('aws.access_key_id', ''),
-            'secret_access_key': self.get('aws.secret_access_key', ''),
-            'region': self.get('aws.region', 'us-east-1'),
-            'endpoint': self.get('aws.endpoint', '')
+            'access_key_id': self.get('s3.access_key_id', ''),
+            'secret_access_key': self.get('s3.secret_access_key', ''),
+            'region': self.get('s3.region', 'us-east-1'),
+            'endpoint': self.get('s3.endpoint', '')
         }
     
     def get_development_config(self) -> Dict[str, Any]:

@@ -1,0 +1,36 @@
+[
+  {
+    "id": 1,
+    "annotations": [
+      {
+        "id": 1,
+        "completed_by": 1,
+        "result": [
+          {
+            "original_width": 800,
+            "original_height": 600,
+            "image_rotation": 0,
+            "value": {
+              "x": 10.0,
+              "y": 20.0,
+              "width": 30.0,
+              "height": 40.0,
+              "rotation": 0,
+              "rectanglelabels": [
+                "price_major"
+              ]
+            },
+            "id": "test1",
+            "from_name": "label",
+            "to_name": "image",
+            "type": "rectanglelabels",
+            "origin": "manual"
+          }
+        ]
+      }
+    ],
+    "data": {
+      "image": "https://via.placeholder.com/800x600.png"
+    }
+  }
+]

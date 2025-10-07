@@ -59,12 +59,12 @@ export:
   optimize: true
   optimization_level: "all"  # basic, extended, all
 
-# AWS S3 Configuration
-aws:
-  access_key_id: "${LS_ML_AWS_ACCESS_KEY_ID}"  # From .env file
-  secret_access_key: "${LS_ML_AWS_SECRET_ACCESS_KEY}"  # From .env file
-  region: "us-east-1"  # Default AWS region
-  endpoint: ""  # Custom S3 endpoint (optional)
+# S3 Configuration
+s3:
+  access_key_id: "${LS_ML_S3_ACCESS_KEY_ID}"  # From .env file
+  secret_access_key: "${LS_ML_S3_SECRET_ACCESS_KEY}"  # From .env file
+  region: "${LS_ML_S3_DEFAULT_REGION:-us-east-1}"  # From .env file with default
+  endpoint: "${LS_ML_S3_ENDPOINT:-}"  # From .env file (optional)
 
 # Logging Configuration
 logging:
