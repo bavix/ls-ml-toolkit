@@ -39,6 +39,12 @@ training:
   save_period: 10
   patience: 50
   workers: 8
+  
+  # NMS (Non-Maximum Suppression) settings
+  nms:
+    iou_threshold: 0.7  # IoU threshold for NMS (0.0-1.0) - higher = fewer detections
+    conf_threshold: 0.25  # Confidence threshold for predictions (0.0-1.0) - higher = fewer detections
+    max_det: 300  # Maximum number of detections per image - lower = faster processing
 
 # Model Export Configuration
 export:
