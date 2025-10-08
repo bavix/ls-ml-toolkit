@@ -75,7 +75,7 @@ class Banner:
                 from . import __version__
                 version = __version__
             except ImportError:
-                version = "1.0.1"
+                version = "1.0.2"
         
         banner = f"""
 {Colors.BRIGHT_CYAN}╔══════════════════════════════════════════════════════════════╗{Colors.RESET}
