@@ -1,13 +1,6 @@
 # Label Studio ML Toolkit Configuration
 # This file contains project-specific settings for ls-ml-toolkit
 
-# Project Information
-project:
-  name: "ls-ml-toolkit"
-  version: "1.0.1"
-  author: "Babichev Maxim"
-  email: "info@babichev.net"
-
 # Dataset Configuration
 dataset:
   # Base dataset directory (can be overridden with --dataset-dir flag)
@@ -99,4 +92,3 @@ platform:
   linux:
     device: "auto"  # PyTorch will auto-detect GPU
     batch_size: 16
-
