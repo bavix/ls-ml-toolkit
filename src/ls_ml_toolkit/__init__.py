@@ -20,7 +20,7 @@ Usage:
     
     # Train model
     trainer = YOLOTrainer('path/to/dataset')
-    trainer.train_model(epochs=50, device='auto')
+    trainer.train_model(epochs=50, device='auto', model='yolo11n.pt')
 """
 
 __version__ = "1.0.2"

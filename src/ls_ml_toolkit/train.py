@@ -395,7 +395,7 @@ class YOLOTrainer:
     def __init__(self, dataset_dir: Path):
         self.dataset_dir = Path(dataset_dir)
     
-    def train_model(self, epochs: int = 50, imgsz: int = 640, batch: int = 8, device: str = "auto", nms_config: dict = None) -> bool:
+    def train_model(self, epochs: int = 50, imgsz: int = 640, batch: int = 8, device: str = "auto", model: str = "yolo11n.pt", nms_config: dict = None) -> bool:
         """Train YOLO model"""
         try:
             
@@ -414,7 +414,7 @@ class YOLOTrainer:
             
             # Create YOLO model
             from ultralytics import YOLO
-            model = YOLO('yolo11n.pt')
+            model = YOLO(model)
             
             # Prepare training arguments
             train_args = {
@@ -560,6 +560,7 @@ def main():
     imgsz = args.imgsz or config.get('training.image_size', 640)
     batch = args.batch or config.get('training.batch_size', 8)
     device = args.device or config.get('training.device', 'auto')
+    model = config.get('training.model', 'yolo11n.pt')
     output_model = args.output_model or config.get('export.model_path', 'shared/models/layout_yolo_universal.onnx')
     dataset_dir = args.dataset_dir or config.get('dataset.base_dir', 'dataset')
     train_split = args.train_split or config.get('dataset.train_split', 0.8)
@@ -577,6 +578,7 @@ def main():
     
     config_table = Table(["Setting", "Value"], "modern")
     config_table.add_row(["JSON file", str(args.json_file)])
+    config_table.add_row(["Model", str(model)])
     config_table.add_row(["Epochs", str(epochs)])
     config_table.add_row(["Image size", str(imgsz)])
     config_table.add_row(["Batch size", str(batch)])
@@ -623,7 +625,7 @@ def main():
         # Get NMS settings from config
         nms_config = config.get("training", {}).get("nms")
         
-        if not trainer.train_model(epochs, imgsz, batch, device, nms_config):
+        if not trainer.train_model(epochs, imgsz, batch, device, model, nms_config):
             logger.error("Model training failed!")
             sys.exit(1)
         status.update_step(2, "Model training completed")
