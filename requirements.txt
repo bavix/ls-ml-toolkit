@@ -30,3 +30,7 @@ torchvision>=0.15.0
 # macOS: pip install torch torchvision (includes MPS)
 # Linux CUDA: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
 # Linux ROCm: pip install torch torchvision --index-url https://download.pytorch.org/whl/rocm5.6
+
+# Letterboxing calibration images for INT8 quantization (quantize.py). Previously present only
+# as an ultralytics transitive dependency; declared here now that toolkit code imports it.
+pillow>=10.0.0

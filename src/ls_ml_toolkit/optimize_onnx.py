@@ -173,6 +173,16 @@ def main():
     parser.add_argument("--level", "-l", choices=["basic", "extended", "all"], 
                        help="Optimization level (default: from ls-ml-toolkit.yaml)")
     parser.add_argument("--config", help="Path to ls-ml-toolkit.yaml file (default: ls-ml-toolkit.yaml)")
+    parser.add_argument(
+        "--quantize", choices=["none", "int8"], default="none",
+        help="Quantize weights and activations to INT8. This, not --level, is what makes the "
+             "model smaller and faster; --level only cleans up the graph.",
+    )
+    parser.add_argument(
+        "--calibration-dir",
+        help="Directory of representative images for INT8 calibration. Without it, quantization "
+             "falls back to dynamic, which barely helps a convolutional detector.",
+    )
     
     args = parser.parse_args()
     
@@ -232,7 +242,15 @@ def main():
     
     # Optimize model
     status.update_step(0, "Loading model...")
-    if optimize_onnx_model(str(input_path), str(output_path), optimization_level):
+    if args.quantize == "int8":
+        try:
+            from .quantize import quantize_model
+        except ImportError:
+            from ls_ml_toolkit.quantize import quantize_model
+        ok = quantize_model(str(input_path), str(output_path), args.calibration_dir)
+    else:
+        ok = optimize_onnx_model(str(input_path), str(output_path), optimization_level)
+    if ok:
         status.update_step(1, "Optimizations applied")
         status.update_step(2, "Model saved")
         status.complete()

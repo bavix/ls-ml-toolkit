@@ -33,7 +33,7 @@ else:
 
 setup(
     name="ls-ml-toolkit",
-    version="1.0.2",
+    version="1.1.0",
     author="Babichev Maxim",
     author_email="info@babichev.net",
     description="Label Studio ML Toolkit: Convert, Train, Optimize object detection models",
@@ -63,6 +63,7 @@ setup(
                 "console_scripts": [
                     "lsml-train=ls_ml_toolkit.train:main",
                     "lsml-optimize=ls_ml_toolkit.optimize_onnx:main",
+                    "lsml-prelabel=ls_ml_toolkit.prelabel:main",
                 ],
             },
     include_package_data=True,
