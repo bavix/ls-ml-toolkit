@@ -133,6 +133,18 @@ def _ensure_opset(model_path: Path, minimum: int) -> tuple[Path, bool]:
 # last one of these is the detection head.
 FEATURE_OPS = ("Conv", "ConvTranspose", "Gemm", "MatMul")
 
+# Operators XNNPACK has no quantized kernel for. Leaving them quantized produces a model that
+# loads fine on a desktop CPU provider and throws at session creation on the phone:
+#
+#   ORT_FAIL - Exception during initialization: xnnpack/math/softmax.cc
+#   xn_create_softmax_nc_qu8 failed. Status:4
+#
+# Which is worth stating plainly, because it is the failure a desktop accuracy gate cannot see: the
+# model was measured over the full annotated set, matched the float model's recall, and still could
+# not start on the device it was built for. They are cheap to leave in float — two Softmax nodes
+# against eighty-eight convolutions.
+UNQUANTIZABLE_OPS = ("Softmax",)
+
 
 def head_nodes(model_path: Path) -> list[str]:
     """Names of the decode nodes after the last convolution — the ones to leave in float.
@@ -157,13 +169,14 @@ def head_nodes(model_path: Path) -> list[str]:
 
     model = onnx.load(str(model_path))
     nodes = list(model.graph.node)  # ONNX guarantees topological order
+    unsupported = [n.name for n in nodes if n.op_type in UNQUANTIZABLE_OPS and n.name]
     last_feature = max(
         (i for i, n in enumerate(nodes) if n.op_type in FEATURE_OPS),
         default=None,
     )
     if last_feature is None:
-        return []
-    return [n.name for n in nodes[last_feature + 1:] if n.name]
+        return unsupported
+    return unsupported + [n.name for n in nodes[last_feature + 1:] if n.name]
 
 
 def _reader_class():
@@ -250,7 +263,10 @@ def quantize_model(
             reader = _reader_class()(images, input_name, width, height)
             excluded = head_nodes(prepared)
             if excluded:
-                logger.info("Leaving %d decode nodes in float (detection head)", len(excluded))
+                logger.info(
+                    "Leaving %d nodes in float: the decode head, plus any operator XNNPACK cannot "
+                    "run quantized", len(excluded),
+                )
             quantize_static(
                 str(prepared),
                 str(target),
