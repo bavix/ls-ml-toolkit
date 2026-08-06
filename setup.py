@@ -65,6 +65,7 @@ setup(
                     "lsml-optimize=ls_ml_toolkit.optimize_onnx:main",
                     "lsml-prelabel=ls_ml_toolkit.prelabel:main",
                     "lsml-crops=ls_ml_toolkit.crops:main",
+                    "lsml-tagset=ls_ml_toolkit.tagset:main",
                 ],
             },
     include_package_data=True,
