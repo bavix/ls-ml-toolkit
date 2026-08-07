@@ -1,0 +1,42 @@
+# Training worker for the S3-queued job system (src/ls_ml_toolkit/worker.py).
+#
+# CPU-only by design: this runs on machines offered occasionally, without a discrete GPU (the
+# first target is an AMD Ryzen 5600G — its integrated Vega graphics has no usable ROCm training
+# path, so this installs CPU-only PyTorch rather than pulling in a multi-gigabyte CUDA/ROCm
+# runtime nothing on the target machine can use).
+FROM python:3.11-slim
+
+# libgl1/libglib2.0-0: OpenCV (an ultralytics dependency) imports libGL at import time even
+# though nothing here ever opens a window. Missing it fails the import, not just headless
+# rendering — this bites on any minimal base image.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# CPU wheels explicitly, from PyTorch's own CPU index — the default PyPI resolution for `torch`
+# pulls CUDA wheels (multi-GB, useless and slow to download on a CPU-only box).
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+RUN pip install --no-cache-dir -e .
+
+# The worker reads S3 credentials from the environment (LS_ML_S3_ACCESS_KEY_ID etc, this
+# project's own convention — see env_loader.py) via this minimal config, substituted the same
+# way ls-ml-toolkit.yaml already does it elsewhere. No secrets baked into the image; Nomad
+# supplies them at run time.
+RUN printf 's3:\n  access_key_id: "${LS_ML_S3_ACCESS_KEY_ID}"\n  secret_access_key: "${LS_ML_S3_SECRET_ACCESS_KEY}"\n  region: "${LS_ML_S3_DEFAULT_REGION}"\n  endpoint: "${LS_ML_S3_ENDPOINT}"\n' > ls-ml-toolkit.yaml
+
+# Ultralytics writes a settings file and caches pretrained weights under a home directory; a
+# container's default HOME may not be writable, and this pins it to a location a Nomad task's
+# writable overlay covers by default.
+ENV HOME=/app
+ENV YOLO_CONFIG_DIR=/app/.config/Ultralytics
+
+ENTRYPOINT ["lsml-worker"]
+CMD ["run", "--bucket", "REQUIRED-override-via-nomad-args"]

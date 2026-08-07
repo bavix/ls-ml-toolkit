@@ -66,6 +66,7 @@ setup(
                     "lsml-prelabel=ls_ml_toolkit.prelabel:main",
                     "lsml-crops=ls_ml_toolkit.crops:main",
                     "lsml-tagset=ls_ml_toolkit.tagset:main",
+                    "lsml-worker=ls_ml_toolkit.worker:main",
                 ],
             },
     include_package_data=True,
