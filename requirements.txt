@@ -37,3 +37,7 @@ pillow>=10.0.0
 
 # Reading HuggingFace-style detection datasets (crops.py)
 pyarrow>=14.0.0
+
+# Bundled DejaVu Sans font for synthetic digit rendering (synth.py) - matplotlib was already a
+# transitive dependency; declared explicitly now that toolkit code imports it directly.
+matplotlib>=3.7.0

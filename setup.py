@@ -67,6 +67,7 @@ setup(
                     "lsml-crops=ls_ml_toolkit.crops:main",
                     "lsml-tagset=ls_ml_toolkit.tagset:main",
                     "lsml-worker=ls_ml_toolkit.worker:main",
+                    "lsml-synth=ls_ml_toolkit.synth:main",
                 ],
             },
     include_package_data=True,
